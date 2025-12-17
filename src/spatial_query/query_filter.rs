@@ -28,29 +28,29 @@ use crate::prelude::*;
 ///     commands.spawn(RayCaster::default().with_query_filter(query_filter));
 /// }
 /// ```
-#[derive(Clone, Debug, PartialEq, Reflect)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialize", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serialize", reflect(Serialize, Deserialize))]
-#[reflect(Debug, PartialEq)]
-pub struct SpatialQueryFilter {
+// #[cfg_attr(feature = "serialize", reflect(Serialize, Deserialize))]
+// #[reflect(Debug, PartialEq)]
+pub struct SpatialQueryFilter<'a> {
     /// Specifies which [collision layers](CollisionLayers) will be included in the [spatial query](crate::spatial_query).
     pub mask: LayerMask,
-    /// Entities that will not be included in [spatial queries](crate::spatial_query).
-    pub excluded_entities: EntityHashSet,
+    /// Predicate that can be used to exclude colliders based on custom logic.
+    pub predicate: Option<&'a dyn Fn(Entity) -> bool>,
 }
 
-impl Default for SpatialQueryFilter {
+impl Default for SpatialQueryFilter<'_> {
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
-impl SpatialQueryFilter {
+impl<'a> SpatialQueryFilter<'a> {
     /// The default [`SpatialQueryFilter`] configuration that includes all collision layers
     /// and has no excluded entities.
     pub const DEFAULT: Self = Self {
         mask: LayerMask::ALL,
-        excluded_entities: EntityHashSet::new(),
+        predicate: None,
     };
 
     /// Creates a new [`SpatialQueryFilter`] with the given [`LayerMask`] determining
@@ -69,10 +69,22 @@ impl SpatialQueryFilter {
     ///
     /// [spatial query]: crate::spatial_query
     pub fn from_excluded_entities(entities: impl IntoIterator<Item = Entity>) -> Self {
+        let f = |entity| !entities.into_iter().any(|e| e == entity);
         Self {
-            excluded_entities: EntityHashSet::from_iter(entities),
+            predicate: Some(f),
             ..default()
         }
+    }
+
+    /// Creates a new [`SpatialQueryFilter`] with the given predicate ANDed to the existing predicate.
+    pub fn and(mut self, predicate: &'a dyn Fn(Entity) -> bool) -> Self {
+        self.predicate = Some(combine_predicates(self.predicate, predicate, |a, b| a && b));
+        self
+    }
+
+    pub fn or(mut self, predicate: &'a dyn Fn(Entity) -> bool) -> Self {
+        self.predicate = Some(combine_predicates(self.predicate, predicate, |a, b| a || b));
+        self
     }
 
     /// Sets the [`LayerMask`] of the filter configuration. Only colliders with the corresponding
@@ -87,7 +99,8 @@ impl SpatialQueryFilter {
 
     /// Excludes the given entities from the [spatial query](crate::spatial_query).
     pub fn with_excluded_entities(mut self, entities: impl IntoIterator<Item = Entity>) -> Self {
-        self.excluded_entities = EntityHashSet::from_iter(entities);
+        let f = move |entity| !entities.into_iter().any(|e| e == entity);
+        self.predicate = Some(combine_predicates(self.predicate, f, |a, b| a && b));
         self
     }
 
@@ -95,8 +108,33 @@ impl SpatialQueryFilter {
     ///
     /// [spatial queries]: crate::spatial_query
     pub fn test(&self, entity: Entity, layers: CollisionLayers) -> bool {
-        !self.excluded_entities.contains(&entity)
-            && CollisionLayers::new(LayerMask::ALL, self.mask)
-                .interacts_with(CollisionLayers::new(layers.memberships, LayerMask::ALL))
+        // !self.excluded_entities.contains(&entity)
+        //     && CollisionLayers::new(LayerMask::ALL, self.mask)
+        //         .interacts_with(CollisionLayers::new(layers.memberships, LayerMask::ALL))
+
+        let layer_check = layers.interacts_with(CollisionLayers::new(LayerMask::ALL, self.mask));
+        let exclusion_check = match &self.predicate {
+            Some(pred) => pred(entity),
+            None => true,
+        };
+        layer_check && exclusion_check
+    }
+}
+
+fn combine_predicates<'b>(
+    existing: Option<impl Fn(Entity) -> bool>,
+    new: impl Fn(Entity) -> bool,
+    combiner: fn(bool, bool) -> bool,
+) -> impl Fn(Entity) -> bool {
+    match existing {
+        Some(pred) => {
+            let f = move |entity| {
+                let existing_result = pred(entity);
+                let new_result = new(entity);
+                combiner(existing_result, new_result)
+            };
+            &f
+        }
+        None => new,
     }
 }

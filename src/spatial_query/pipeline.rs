@@ -70,28 +70,6 @@ impl SpatialQueryPipeline {
         self.as_composite_shape_internal(query_filter)
     }
 
-    pub(crate) fn as_composite_shape_with_predicate_internal<'a: 'b, 'b>(
-        &'a self,
-        query_filter: &'a SpatialQueryFilter,
-        predicate: &'a dyn Fn(Entity) -> bool,
-    ) -> QueryPipelineAsCompositeShapeWithPredicate<'a, 'b> {
-        QueryPipelineAsCompositeShapeWithPredicate {
-            pipeline: self,
-            query_filter,
-            predicate,
-        }
-    }
-
-    /// Creates a parry [`TypedCompositeShape`] for this pipeline, with a predicate.
-    /// Can be used to implement custom spatial queries
-    pub fn as_composite_shape_with_predicate<'a>(
-        &'a self,
-        query_filter: &'a SpatialQueryFilter,
-        predicate: &'a dyn Fn(Entity) -> bool,
-    ) -> impl TypedCompositeShape {
-        self.as_composite_shape_with_predicate_internal(query_filter, predicate)
-    }
-
     /// Updates the associated acceleration structures with a new set of entities.
     pub fn update<'a>(
         &mut self,
@@ -828,7 +806,7 @@ impl SpatialQueryPipeline {
 
 pub(crate) struct QueryPipelineAsCompositeShape<'a> {
     pipeline: &'a SpatialQueryPipeline,
-    query_filter: &'a SpatialQueryFilter,
+    query_filter: &'a SpatialQueryFilter<'a>,
 }
 
 impl CompositeShape for QueryPipelineAsCompositeShape<'_> {
@@ -892,8 +870,7 @@ impl TypedCompositeShape for QueryPipelineAsCompositeShape<'_> {
 
 pub(crate) struct QueryPipelineAsCompositeShapeWithPredicate<'a, 'b> {
     pipeline: &'a SpatialQueryPipeline,
-    query_filter: &'a SpatialQueryFilter,
-    predicate: &'b dyn Fn(Entity) -> bool,
+    query_filter: &'a SpatialQueryFilter<'b>,
 }
 
 impl CompositeShape for QueryPipelineAsCompositeShapeWithPredicate<'_, '_> {

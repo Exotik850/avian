@@ -96,9 +96,9 @@ pub struct PhysicsPickable;
 /// If not present on a camera, picking will consider all colliders.
 #[derive(Component, Clone, Debug, Default, Reflect)]
 #[reflect(Component, Debug, Default)]
-pub struct PhysicsPickingFilter(pub SpatialQueryFilter);
+pub struct PhysicsPickingFilter<'a>(pub SpatialQueryFilter<'a>);
 
-impl PhysicsPickingFilter {
+impl<'a> PhysicsPickingFilter<'a> {
     /// Creates a new [`PhysicsPickingFilter`] with the given [`LayerMask`] determining
     /// which [collision layers] will be pickable.
     ///

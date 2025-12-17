@@ -233,8 +233,8 @@ pub fn update_spatial_query_pipeline(
     diagnostics.update_pipeline = start.elapsed();
 }
 
-type RayCasterPositionQueryComponents = (
-    &'static mut RayCaster,
+type RayCasterPositionQueryComponents<'a> = (
+    &'static mut RayCaster<'a>,
     Option<&'static Position>,
     Option<&'static Rotation>,
     Option<&'static ChildOf>,
@@ -301,8 +301,8 @@ fn update_ray_caster_positions(
 }
 
 #[cfg(any(feature = "parry-f32", feature = "parry-f64"))]
-type ShapeCasterPositionQueryComponents = (
-    &'static mut ShapeCaster,
+type ShapeCasterPositionQueryComponents<'a> = (
+    &'static mut ShapeCaster<'a>,
     Option<&'static Position>,
     Option<&'static Rotation>,
     Option<&'static ChildOf>,

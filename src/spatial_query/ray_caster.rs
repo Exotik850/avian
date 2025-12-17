@@ -75,7 +75,7 @@ use parry::{partitioning::BvhNode, query::RayCast};
 #[reflect(Debug, Component, PartialEq)]
 #[component(on_add = on_add_ray_caster)]
 #[require(RayHits)]
-pub struct RayCaster {
+pub struct RayCaster<'a> {
     /// Controls if the ray caster is enabled.
     pub enabled: bool,
 
@@ -119,10 +119,10 @@ pub struct RayCaster {
     pub ignore_self: bool,
 
     /// Rules that determine which colliders are taken into account in the ray cast.
-    pub query_filter: SpatialQueryFilter,
+    pub query_filter: SpatialQueryFilter<'a>,
 }
 
-impl Default for RayCaster {
+impl Default for RayCaster<'_> {
     fn default() -> Self {
         Self {
             enabled: true,
@@ -139,13 +139,13 @@ impl Default for RayCaster {
     }
 }
 
-impl From<Ray> for RayCaster {
+impl From<Ray> for RayCaster<'static> {
     fn from(ray: Ray) -> Self {
         RayCaster::from_ray(ray)
     }
 }
 
-impl RayCaster {
+impl RayCaster<'_> {
     /// Creates a new [`RayCaster`] with a given origin and direction.
     pub fn new(origin: Vector, direction: Dir) -> Self {
         Self {
@@ -156,7 +156,7 @@ impl RayCaster {
     }
 
     /// Creates a new [`RayCaster`] from a ray.
-    pub fn from_ray(ray: Ray) -> Self {
+    pub fn from_ray(ray: Ray) -> RayCaster<'static> {
         Self {
             origin: ray.origin.adjust_precision(),
             direction: ray.direction,

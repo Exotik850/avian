@@ -60,7 +60,7 @@ use parry::{query::ShapeCastOptions, shape::CompositeShapeRef};
 #[reflect(Debug, Component)]
 #[component(on_add = on_add_shape_caster)]
 #[require(ShapeHits)]
-pub struct ShapeCaster {
+pub struct ShapeCaster<'a> {
     /// Controls if the shape caster is enabled.
     pub enabled: bool,
 
@@ -140,10 +140,10 @@ pub struct ShapeCaster {
     pub ignore_self: bool,
 
     /// Rules that determine which colliders are taken into account in the shape cast.
-    pub query_filter: SpatialQueryFilter,
+    pub query_filter: SpatialQueryFilter<'a>,
 }
 
-impl Default for ShapeCaster {
+impl Default for ShapeCaster<'_> {
     fn default() -> Self {
         Self {
             enabled: true,
@@ -174,7 +174,7 @@ impl Default for ShapeCaster {
     }
 }
 
-impl ShapeCaster {
+impl<'a> ShapeCaster<'a> {
     /// Creates a new [`ShapeCaster`] with a given shape, origin, shape rotation and direction.
     #[cfg(feature = "2d")]
     pub fn new(
